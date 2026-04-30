@@ -8,7 +8,7 @@ import type { Role } from "@/generated/prisma/client"
 
 const ROLE_LABELS: Record<Role, string> = {
   CEO: "CEO",
-  AI_GENERATOR: "AI Generator",
+  AI_GENERATOR: "AI Generator", // unused in Vittelo; kept for type compatibility
   EDITOR: "Editor",
 }
 
@@ -47,8 +47,7 @@ export default function Navbar({ user }: { user: { name?: string | null; role: R
             className="h-16 w-auto"
           />
         </Link>
-        {(user.role === "CEO" || user.role === "AI_GENERATOR" || user.role === "EDITOR") && navLink("/dashboard", "CEO Board")}
-        {(user.role === "CEO" || user.role === "AI_GENERATOR") && navLink("/dashboard/aig", "AIG Board")}
+        {(user.role === "CEO" || user.role === "EDITOR") && navLink("/dashboard", "CEO Board")}
         {(user.role === "CEO" || user.role === "EDITOR") && navLink("/dashboard/editor", "Editor Board")}
         {user.role === "CEO" && navLink("/dashboard/team", "Team")}
         {user.role === "CEO" && navLink("/dashboard/setup", "Setup")}

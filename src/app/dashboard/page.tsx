@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       id: true, concept: true, briefLink: true, adNumber: true,
       extraInfo: true, launchDate: true, result: true, learnings: true,
       spend: true, roas: true, stage: true, ceoStatus: true,
-      projectType: true, style: true,
+      projectType: true, style: true, landingPage: true,
       editorDriveLink: true,
     }
 
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       include: {
         creatives: {
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: "desc" },
           select: CREATIVE_SELECT,
         },
       },

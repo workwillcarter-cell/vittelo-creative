@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const {
     concept, briefLink, finishedAdLink, learnings,
     adNumber, launchDate, result, spend, roas, extraInfo, ceoStatus,
-    aigStatus, projectType, style, aigNotes, needsRevision, revisionDetails, revisionComplete,
+    projectType, style, landingPage, needsRevision, revisionDetails, revisionComplete,
     editorStatus, editorNotes, editorNeedsRevision, editorRevisionDetails, editorRevisionComplete,
     editorDriveLink, usedInAd,
   } = body
@@ -42,20 +42,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!existing?.launchDate) autoLaunchDate = new Date()
   }
 
-  // Auto-assign to AIG board when CEO marks Moved to AIG
-  let autoAigStatus: string | undefined = undefined
-  if (ceoStatus === "MOVED_TO_AIG") {
-    const existing = await prisma.creative.findUnique({ where: { id }, select: { aigStatus: true } })
-    if (!existing?.aigStatus) autoAigStatus = "ASSIGNED"
-  }
-
-  // Auto-assign to Editor board when CEO marks Moved to Editor OR when AIG moves to Added to Editor
+  // Auto-assign to Editor board when CEO marks Moved to Editor
   let autoEditorStatus: string | undefined = undefined
   if (ceoStatus === "MOVED_TO_EDITOR") {
-    const existing = await prisma.creative.findUnique({ where: { id }, select: { editorStatus: true } })
-    if (!existing?.editorStatus) autoEditorStatus = "ASSIGNED"
-  }
-  if (aigStatus === "ADDED_TO_EDITOR") {
     const existing = await prisma.creative.findUnique({ where: { id }, select: { editorStatus: true } })
     if (!existing?.editorStatus) autoEditorStatus = "ASSIGNED"
   }
@@ -81,12 +70,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     })
 
     if (!existing?.batchId) {
+      // Vittelo: unsealed, unlimited batches. Always reuse the first open batch; never auto-seal.
       const openBatch = await prisma.batch.findFirst({
         where: { sealed: false },
-        include: { _count: { select: { creatives: true } } },
         orderBy: { createdAt: "asc" },
       })
-      if (!openBatch || openBatch._count.creatives >= 10) {
+      if (!openBatch) {
         const batchCount = await prisma.batch.count()
         const batchNumber = batchCount + 1
         const newBatch = await prisma.batch.create({
@@ -127,10 +116,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(roas !== undefined && { roas: roas !== null ? Number(roas) : null }),
       ...(extraInfo !== undefined && { extraInfo: extraInfo || null }),
       ...(ceoStatus !== undefined && { ceoStatus: ceoStatus || null }),
-      ...(aigStatus !== undefined && { aigStatus: aigStatus || null }),
       ...(projectType !== undefined && { projectType: projectType || null }),
       ...(style !== undefined && { style: style || null }),
-      ...(aigNotes !== undefined && { aigNotes: aigNotes || null }),
+      ...(landingPage !== undefined && { landingPage: landingPage || null }),
       ...(needsRevision !== undefined && { needsRevision }),
       ...(revisionDetails !== undefined && { revisionDetails: revisionDetails || null }),
       ...(revisionComplete !== undefined && { revisionComplete }),
@@ -143,19 +131,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(usedInAd !== undefined && { usedInAd: usedInAd || null }),
       ...(batchId !== undefined && { batchId }),
       ...(autoLaunchDate !== undefined && { launchDate: autoLaunchDate }),
-      ...(autoAigStatus !== undefined && { aigStatus: autoAigStatus }),
       ...(autoEditorStatus !== undefined && { editorStatus: autoEditorStatus }),
       ...(autoCeoStatus !== undefined && { ceoStatus: autoCeoStatus }),
       ...(autoAdNumber !== undefined && { adNumber: autoAdNumber }),
     },
   })
-
-  if (batchId) {
-    const count = await prisma.creative.count({ where: { batchId } })
-    if (count >= 10) {
-      await prisma.batch.update({ where: { id: batchId }, data: { sealed: true } })
-    }
-  }
 
   return NextResponse.json(creative)
 }

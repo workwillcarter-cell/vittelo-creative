@@ -16,12 +16,19 @@ type Card = {
   editorRevisionComplete: boolean
   usedInAd: string | null
   adNumber: string | null
+  projectType: string | null
   transferStatus: string | null
   transferError: string | null
   transferredAt: string | null
   dropboxPath: string | null
   updatedAt: string
   batchName: string | null
+}
+
+const PRODUCT_COLORS: Record<string, string> = {
+  "Men's Classic": "bg-slate-200 text-slate-800",
+  "Tactical":      "bg-orange-100 text-orange-700",
+  "Women's":       "bg-pink-100 text-pink-700",
 }
 
 type RevisionItem = { id: string; text: string; complete: boolean }
@@ -212,6 +219,12 @@ function EditorCard({ card, isDragging, onClick, onDragStart, onDragEnd }: {
       onDragEnd={onDragEnd}
       className={`bg-white border border-gray-200 rounded-xl p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none ${isDragging ? "opacity-40 scale-95" : ""}`}
     >
+      {card.projectType && (
+        <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-2 ${PRODUCT_COLORS[card.projectType] ?? "bg-gray-100 text-gray-600"}`}>
+          {card.projectType}
+        </span>
+      )}
+
       <p className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">{card.concept}</p>
 
       {card.batchName && (

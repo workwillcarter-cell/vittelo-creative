@@ -19,6 +19,7 @@ type Creative = {
   ceoStatus: string | null
   projectType: string | null
   style: string | null
+  landingPage: string | null
   editorDriveLink: string | null
 }
 
@@ -32,7 +33,6 @@ type Batch = {
 
 const CEO_STATUSES = [
   { value: "BRIEF_COMPLETE",  label: "Brief Complete" },
-  { value: "MOVED_TO_AIG",    label: "Moved to AIG" },
   { value: "MOVED_TO_EDITOR", label: "Moved to Editor" },
   { value: "READY",           label: "Ready" },
   { value: "LAUNCHED",        label: "Launched" },
@@ -40,22 +40,46 @@ const CEO_STATUSES = [
 
 const CEO_STATUS_COLORS: Record<string, string> = {
   BRIEF_COMPLETE:   "bg-yellow-100 text-yellow-700",
-  MOVED_TO_AIG:     "bg-purple-100 text-purple-700",
   MOVED_TO_EDITOR:  "bg-blue-100 text-blue-700",
   READY:            "bg-green-100 text-green-700",
   LAUNCHED:         "bg-pink-100 text-pink-700",
 }
 
-const PROJECT_TYPES = ["Script Shotlist", "Perfect UGC", "Cartoon", "UGC", "Image", "Clip Refresh", "No Gen"]
+// Internally still called projectType for DB compatibility — display label is "Product".
+const PROJECT_TYPES = ["Men's Classic", "Tactical", "Women's"]
 
 const PROJECT_TYPE_COLORS: Record<string, string> = {
-  "Script Shotlist": "bg-orange-100 text-orange-700",
-  "Perfect UGC":     "bg-pink-100 text-pink-700",
-  "Cartoon":         "bg-yellow-100 text-yellow-700",
-  "UGC":             "bg-teal-100 text-teal-700",
-  "Image":           "bg-sky-100 text-sky-700",
-  "Clip Refresh":    "bg-violet-100 text-violet-700",
-  "No Gen":          "bg-slate-200 text-slate-700",
+  "Men's Classic": "bg-slate-200 text-slate-800",
+  "Tactical":      "bg-orange-100 text-orange-700",
+  "Women's":       "bg-pink-100 text-pink-700",
+}
+
+const LANDING_PAGES = [
+  "Classic",
+  "Tactical",
+  "Tactical 3-pack",
+  "Woman Thin",
+  "Woman Thick",
+  "Woman 3 Pack",
+  "6 reason woman gifting listicle",
+  "Men listicle",
+  "Men's Collections page",
+  "Women's Collections Page",
+  "Canadian men listicle",
+]
+
+const LANDING_PAGE_COLORS: Record<string, string> = {
+  "Classic":                          "bg-slate-200 text-slate-700",
+  "Tactical":                         "bg-red-200 text-red-700",
+  "Tactical 3-pack":                  "bg-green-100 text-green-700",
+  "Woman Thin":                       "bg-fuchsia-100 text-fuchsia-700",
+  "Woman Thick":                      "bg-cyan-100 text-cyan-700",
+  "Woman 3 Pack":                     "bg-teal-700 text-white",
+  "6 reason woman gifting listicle":  "bg-purple-700 text-white",
+  "Men listicle":                     "bg-teal-100 text-teal-700",
+  "Men's Collections page":           "bg-emerald-100 text-emerald-700",
+  "Women's Collections Page":         "bg-sky-100 text-sky-700",
+  "Canadian men listicle":            "bg-gray-200 text-gray-700",
 }
 
 const STYLES = ["Net New", "Iteration", "Shotgun/Random"]
@@ -66,11 +90,10 @@ const STYLE_COLORS: Record<string, string> = {
   "Shotgun/Random": "bg-amber-100 text-amber-700",
 }
 
-// Planning sort order: top → bottom = no-status, BRIEF_COMPLETE, MOVED_TO_AIG, MOVED_TO_EDITOR
+// Planning sort order: top → bottom = no-status, BRIEF_COMPLETE, MOVED_TO_EDITOR
 const PLANNING_STATUS_ORDER: Record<string, number> = {
   BRIEF_COMPLETE:  1,
-  MOVED_TO_AIG:    2,
-  MOVED_TO_EDITOR: 3,
+  MOVED_TO_EDITOR: 2,
 }
 
 function sortPlanning<T extends { ceoStatus: string | null; projectType: string | null }>(rows: T[]): T[] {
@@ -96,8 +119,8 @@ const RESULT_COLORS: Record<Result, string> = {
   SPENT_BUT_POOR_PERFORMANCE: "bg-orange-100 text-orange-700",
 }
 
-const COL_SPAN = 13
-const TOTAL_COLS = 12 // navigable columns: 0=concept 1=brief 2=projectType 3=style 4=status 5=adNumber 6=extraInfo 7=launchDate 8=result 9=learnings 10=spend 11=roas
+const COL_SPAN = 14
+const TOTAL_COLS = 13 // 0=concept 1=brief 2=product 3=style 4=landingPage 5=status 6=adNumber 7=extraInfo 8=launchDate 9=result 10=learnings 11=spend 12=roas
 
 type NavDir = "tab" | "shift-tab" | "enter"
 
@@ -184,8 +207,9 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
               <th className="px-3 py-2.5 text-left w-8 rounded-tl-xl border-b border-zinc-700">#</th>
               <th className="px-3 py-2.5 text-left min-w-[200px] border-b border-zinc-700">Concept</th>
               <th className="px-3 py-2.5 text-left w-20 border-b border-zinc-700">Brief</th>
-              <th className="px-3 py-2.5 text-left w-32 border-b border-zinc-700">Project Type</th>
+              <th className="px-3 py-2.5 text-left w-32 border-b border-zinc-700">Product</th>
               <th className="px-3 py-2.5 text-left w-32 border-b border-zinc-700">Style</th>
+              <th className="px-3 py-2.5 text-left w-44 border-b border-zinc-700">Landing Page</th>
               <th className="px-3 py-2.5 text-left w-36 border-b border-zinc-700">Status</th>
               <th className="px-3 py-2.5 text-left w-24 border-b border-zinc-700">Ad #</th>
               <th className="px-3 py-2.5 text-left w-72 border-b border-zinc-700">Extra Info</th>
@@ -327,28 +351,31 @@ function CreativeRow({
         <StyleCell cellId={`${rowIndex}-3`} value={creative.style} onSave={(v) => onUpdate(creative.id, "style", v)} onNav={nav(3)} />
       </td>
       <td className="px-1 py-1">
-        <CEOStatusCell cellId={`${rowIndex}-4`} value={creative.ceoStatus} onSave={(v) => onUpdate(creative.id, "ceoStatus", v)} onNav={nav(4)} />
+        <LandingPageCell cellId={`${rowIndex}-4`} value={creative.landingPage} onSave={(v) => onUpdate(creative.id, "landingPage", v)} onNav={nav(4)} />
       </td>
       <td className="px-1 py-1">
-        <AdNumberCell cellId={`${rowIndex}-5`} value={creative.adNumber} driveLink={creative.editorDriveLink} onSave={(v) => onUpdate(creative.id, "adNumber", v)} onNav={nav(5)} />
+        <CEOStatusCell cellId={`${rowIndex}-5`} value={creative.ceoStatus} onSave={(v) => onUpdate(creative.id, "ceoStatus", v)} onNav={nav(5)} />
       </td>
       <td className="px-1 py-1">
-        <EditableCell cellId={`${rowIndex}-6`} value={creative.extraInfo ?? ""} onSave={(v) => onUpdate(creative.id, "extraInfo", v || null)} placeholder="—" multiline onNav={nav(6)} className="text-gray-300 text-xs" />
+        <AdNumberCell cellId={`${rowIndex}-6`} value={creative.adNumber} driveLink={creative.editorDriveLink} onSave={(v) => onUpdate(creative.id, "adNumber", v)} onNav={nav(6)} />
       </td>
       <td className="px-1 py-1">
-        <DateCell cellId={`${rowIndex}-7`} value={creative.launchDate} onSave={(v) => onUpdate(creative.id, "launchDate", v)} onNav={nav(7)} />
+        <EditableCell cellId={`${rowIndex}-7`} value={creative.extraInfo ?? ""} onSave={(v) => onUpdate(creative.id, "extraInfo", v || null)} placeholder="—" multiline onNav={nav(7)} className="text-gray-300 text-xs" />
       </td>
       <td className="px-1 py-1">
-        <ResultCell cellId={`${rowIndex}-8`} value={creative.result} onSave={(v) => onUpdate(creative.id, "result", v)} onNav={nav(8)} />
+        <DateCell cellId={`${rowIndex}-8`} value={creative.launchDate} onSave={(v) => onUpdate(creative.id, "launchDate", v)} onNav={nav(8)} />
       </td>
       <td className="px-1 py-1">
-        <EditableCell cellId={`${rowIndex}-9`} value={creative.learnings ?? ""} onSave={(v) => onUpdate(creative.id, "learnings", v || null)} placeholder="—" multiline onNav={nav(9)} className="text-gray-300 text-xs" />
+        <ResultCell cellId={`${rowIndex}-9`} value={creative.result} onSave={(v) => onUpdate(creative.id, "result", v)} onNav={nav(9)} />
       </td>
       <td className="px-1 py-1">
-        <NumberCell cellId={`${rowIndex}-10`} value={creative.spend} onSave={(v) => onUpdate(creative.id, "spend", v)} prefix="$" onNav={nav(10)} />
+        <EditableCell cellId={`${rowIndex}-10`} value={creative.learnings ?? ""} onSave={(v) => onUpdate(creative.id, "learnings", v || null)} placeholder="—" multiline onNav={nav(10)} className="text-gray-300 text-xs" />
       </td>
       <td className="px-1 py-1">
-        <NumberCell cellId={`${rowIndex}-11`} value={creative.roas} onSave={(v) => onUpdate(creative.id, "roas", v)} decimals={2} onNav={nav(11)} />
+        <NumberCell cellId={`${rowIndex}-11`} value={creative.spend} onSave={(v) => onUpdate(creative.id, "spend", v)} prefix="$" onNav={nav(11)} />
+      </td>
+      <td className="px-1 py-1">
+        <NumberCell cellId={`${rowIndex}-12`} value={creative.roas} onSave={(v) => onUpdate(creative.id, "roas", v)} decimals={2} onNav={nav(12)} />
       </td>
     </tr>
   )
@@ -453,6 +480,39 @@ function StyleCell({ value, onSave, cellId, onNav }: { value: string | null; onS
     <div data-cell={cellId} onClick={() => setEditing(true)} className="cursor-pointer min-h-[28px] px-2 py-1 rounded-lg hover:bg-zinc-700/60 transition-all">
       {value
         ? <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STYLE_COLORS[value] ?? "bg-gray-100 text-gray-600"}`}>{value}</span>
+        : <span className="text-xs text-gray-500 italic">—</span>
+      }
+    </div>
+  )
+}
+
+function LandingPageCell({ value, onSave, cellId, onNav }: { value: string | null; onSave: (v: string | null) => void; cellId: string; onNav: (d: NavDir) => void }) {
+  const [editing, setEditing] = useState(false)
+
+  if (editing) {
+    return (
+      <select
+        autoFocus
+        defaultValue={value ?? ""}
+        onChange={(e) => { onSave(e.target.value || null); setEditing(false) }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") { e.preventDefault(); setEditing(false); onNav(e.shiftKey ? "shift-tab" : "tab") }
+          if (e.key === "Enter") { setEditing(false); onNav("enter") }
+          if (e.key === "Escape") setEditing(false)
+        }}
+        className="text-xs text-gray-100 border border-bloom rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-bloom/40 bg-zinc-900"
+      >
+        <option value="">— No landing page</option>
+        {LANDING_PAGES.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+    )
+  }
+
+  return (
+    <div data-cell={cellId} onClick={() => setEditing(true)} className="cursor-pointer min-h-[28px] px-2 py-1 rounded-lg hover:bg-zinc-700/60 transition-all">
+      {value
+        ? <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${LANDING_PAGE_COLORS[value] ?? "bg-gray-100 text-gray-600"}`}>{value}</span>
         : <span className="text-xs text-gray-500 italic">—</span>
       }
     </div>

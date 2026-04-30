@@ -84,7 +84,6 @@ export default function AddUserButton() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-bloom"
                 >
                   <option value="EDITOR">Editor</option>
-                  <option value="AI_GENERATOR">AI Generator</option>
                   <option value="CEO">CEO</option>
                 </select>
               </div>
