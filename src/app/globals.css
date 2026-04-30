@@ -4,14 +4,15 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* BloomaCare brand */
-  --bloom: #43A047;
-  --bloom-dark: #2E7D32;
-  --bloom-darker: #1B5E20;
-  --bloom-leaf: #7CB342;
-  --bloom-soft: #E8F5E9;
-  --bloom-charcoal: #3F4A4A;
-  --bloom-cream: #FAFBF7;
+  /* Vittelo brand — black & zinc monochrome.
+     Variable names kept as `bloom-*` for code compatibility with the original codebase. */
+  --bloom: #3f3f46;          /* zinc-700  · primary button fill */
+  --bloom-dark: #18181b;     /* zinc-900  · page bg + button hover */
+  --bloom-darker: #09090b;   /* zinc-950  · deepest accents */
+  --bloom-leaf: #71717a;     /* zinc-500  · accent / hover text */
+  --bloom-soft: #d4d4d8;     /* zinc-300  · muted text on dark */
+  --bloom-charcoal: #18181b; /* zinc-900  · primary text on light */
+  --bloom-cream: #fafafa;    /* zinc-50   · light backgrounds (login) */
 }
 
 @theme inline {

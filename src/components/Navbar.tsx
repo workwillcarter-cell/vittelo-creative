@@ -39,12 +39,12 @@ export default function Navbar({ user }: { user: { name?: string | null; role: R
       <div className="flex items-center gap-7">
         <Link href="/dashboard" className="flex items-center">
           <Image
-            src="/bloomacare-logo.png"
+            src="/vittelo-logo.svg"
             alt="Vittelo"
-            width={280}
-            height={80}
+            width={312}
+            height={52}
             priority
-            className="h-16 w-auto"
+            className="h-7 w-auto"
           />
         </Link>
         {(user.role === "CEO" || user.role === "EDITOR") && navLink("/dashboard", "CEO Board")}

@@ -36,12 +36,12 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <Image
-            src="/bloomacare-logo.png"
+            src="/vittelo-logo.svg"
             alt="Vittelo"
-            width={200}
-            height={60}
+            width={234}
+            height={39}
             priority
-            className="h-12 w-auto mb-4"
+            className="h-7 w-auto mb-4"
           />
           <p className="text-sm text-gray-500">Ad Manager · sign in</p>
         </div>

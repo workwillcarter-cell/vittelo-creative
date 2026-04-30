@@ -8,7 +8,7 @@ const geist = Geist({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Vittelo Creative",
   description: "Creative project manager for Vittelo ads",
-  icons: { icon: "/bloomacare-logo.png" },
+  icons: { icon: "/vittelo-logo.svg" },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
