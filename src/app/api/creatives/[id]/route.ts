@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { TEAMS, type TeamCode } from "@/lib/teams"
+import { canWriteTeam } from "@/lib/permissions"
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -25,6 +27,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
+
+  // Team gate: load the creative's team and confirm the user can write to it.
+  const ownership = await prisma.creative.findUnique({ where: { id }, select: { team: true } })
+  if (!ownership) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (!ownership.team || !canWriteTeam({ role: session.user.role, team: session.user.team }, ownership.team as TeamCode)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   const body = await req.json()
 
   const {
@@ -70,16 +80,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     })
 
     if (!existing?.batchId) {
-      // Vittelo: unsealed, unlimited batches. Always reuse the first open batch; never auto-seal.
+      // Vittelo: unsealed, unlimited batches, scoped per team.
       const openBatch = await prisma.batch.findFirst({
-        where: { sealed: false },
+        where: { sealed: false, team: ownership.team },
         orderBy: { createdAt: "asc" },
       })
       if (!openBatch) {
-        const batchCount = await prisma.batch.count()
-        const batchNumber = batchCount + 1
+        const teamBatchCount = await prisma.batch.count({ where: { team: ownership.team } })
+        const batchNumber = teamBatchCount + 1
         const newBatch = await prisma.batch.create({
-          data: { name: `Batch ${batchNumber}`, number: batchNumber, sealed: false, createdById: session.user.id },
+          data: {
+            name: `Batch ${batchNumber}`,
+            number: batchNumber,
+            sealed: false,
+            team: ownership.team,
+            createdById: session.user.id,
+          },
         })
         batchId = newBatch.id
       } else {
@@ -88,17 +104,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (!existing?.adNumber && adNumber === undefined) {
+      const teamCfg = TEAMS[ownership.team as TeamCode]
+      const prefix = teamCfg.adPrefix
       const named = await prisma.creative.findMany({
-        where: { adNumber: { startsWith: "Vit" } },
+        where: { adNumber: { startsWith: prefix }, team: ownership.team },
         select: { adNumber: true },
       })
+      const numRe = new RegExp(`^${prefix}(\\d+)$`)
       const maxNum = named.reduce((max, c) => {
-        const m = c.adNumber?.match(/^Vit(\d+)$/)
+        const m = c.adNumber?.match(numRe)
         if (!m) return max
         const n = parseInt(m[1], 10)
         return Number.isNaN(n) ? max : Math.max(max, n)
       }, 99)
-      autoAdNumber = `Vit${maxNum + 1}`
+      autoAdNumber = `${prefix}${maxNum + 1}`
     }
   }
 

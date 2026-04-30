@@ -10,7 +10,7 @@ export async function GET() {
   if (session.user.role !== "CEO") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, team: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   })
 
@@ -22,15 +22,21 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (session.user.role !== "CEO") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const { name, email, password, role } = await req.json()
+  const { name, email, password, role, team } = await req.json()
   if (!name || !email || !password || !role) {
     return NextResponse.json({ error: "All fields required" }, { status: 400 })
   }
 
+  // Strategists/editors must belong to a team; CEOs must not.
+  const teamRequired = role !== "CEO"
+  if (teamRequired && team !== "ZAL" && team !== "VAL") {
+    return NextResponse.json({ error: "team must be ZAL or VAL" }, { status: 400 })
+  }
+
   const hashed = await bcrypt.hash(password, 10)
   const user = await prisma.user.create({
-    data: { name, email, password: hashed, role },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    data: { name, email, password: hashed, role, team: teamRequired ? team : null },
+    select: { id: true, name: true, email: true, role: true, team: true, createdAt: true },
   })
 
   return NextResponse.json(user, { status: 201 })

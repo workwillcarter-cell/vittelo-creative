@@ -9,9 +9,9 @@ import {
   dropboxFolderExists,
   uploadStreamToDropbox,
 } from "@/lib/dropbox"
+import { TEAMS, type TeamCode } from "@/lib/teams"
 
 export const EXPECTED_FILE_COUNT = 3
-const DROPBOX_TARGET_FOLDER = "/Ads"
 
 export async function runTransfer(creativeId: string) {
   const creative = await prisma.creative.findUnique({ where: { id: creativeId } })
@@ -19,11 +19,15 @@ export async function runTransfer(creativeId: string) {
   if (!creative.adNumber) throw new Error("No ad number assigned yet")
   if (!creative.editorDriveLink) throw new Error("No editor Drive link on this ad")
   if (creative.editorStatus !== "COMPLETE") throw new Error("Editor hasn't marked this ad Complete")
+  if (!creative.team || !(creative.team in TEAMS)) {
+    throw new Error("Creative has no team — cannot pick a Dropbox destination folder")
+  }
 
   const folderId = extractDriveFolderId(creative.editorDriveLink)
   if (!folderId) throw new Error("Couldn't read folder ID from editor's Drive link")
 
   const adName = creative.adNumber
+  const targetFolder = TEAMS[creative.team as TeamCode].dropboxFolder
 
   await prisma.creative.update({
     where: { id: creativeId },
@@ -42,7 +46,7 @@ export async function runTransfer(creativeId: string) {
 
     const targetPaths = sorted.map((file, i) => {
       const ext = getFileExtension(file.name)
-      return `${DROPBOX_TARGET_FOLDER}/${adName}V${i + 1}.${ext}`
+      return `${targetFolder}/${adName}V${i + 1}.${ext}`
     })
 
     for (const path of targetPaths) {
@@ -61,7 +65,7 @@ export async function runTransfer(creativeId: string) {
       data: {
         transferStatus: "DONE",
         transferredAt: new Date(),
-        dropboxPath: DROPBOX_TARGET_FOLDER,
+        dropboxPath: targetFolder,
         transferError: null,
       },
     })

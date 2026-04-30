@@ -5,15 +5,17 @@ import { redirect } from "next/navigation"
 import AddUserButton from "@/components/AddUserButton"
 import type { Role } from "@/generated/prisma/client"
 
+import { teamFromCode } from "@/lib/teams"
+
 const ROLE_LABELS: Record<Role, string> = {
   CEO: "CEO",
-  AI_GENERATOR: "AI Generator",
+  STRATEGIST: "Strategist",
   EDITOR: "Editor",
 }
 
 const ROLE_COLORS: Record<Role, string> = {
   CEO: "bg-blue-100 text-blue-700",
-  AI_GENERATOR: "bg-purple-100 text-purple-700",
+  STRATEGIST: "bg-purple-100 text-purple-700",
   EDITOR: "bg-orange-100 text-orange-700",
 }
 
@@ -22,7 +24,7 @@ export default async function TeamPage() {
   if (!session || session.user.role !== "CEO") redirect("/dashboard")
 
   const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, team: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   })
 
@@ -37,20 +39,28 @@ export default async function TeamPage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        {users.map((user, i) => (
-          <div
-            key={user.id}
-            className={`flex items-center justify-between px-5 py-4 ${i !== 0 ? "border-t border-gray-100" : ""}`}
-          >
-            <div>
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-400">{user.email}</p>
+        {users.map((user, i) => {
+          const team = teamFromCode(user.team)
+          let displayRole: string = ROLE_LABELS[user.role]
+          if (team) {
+            if (user.role === "STRATEGIST") displayRole = team.strategistName
+            if (user.role === "EDITOR")     displayRole = team.editorName
+          }
+          return (
+            <div
+              key={user.id}
+              className={`flex items-center justify-between px-5 py-4 ${i !== 0 ? "border-t border-gray-100" : ""}`}
+            >
+              <div>
+                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                <p className="text-xs text-gray-400">{user.email}</p>
+              </div>
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role]}`}>
+                {displayRole}
+              </span>
             </div>
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role]}`}>
-              {ROLE_LABELS[user.role]}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

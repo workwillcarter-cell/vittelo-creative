@@ -2,13 +2,18 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { TEAMS, type TeamCode } from "@/lib/teams"
+
+const INITIAL_FORM = { name: "", email: "", password: "", role: "EDITOR", team: "ZAL" as TeamCode }
 
 export default function AddUserButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "EDITOR" })
+  const [form, setForm] = useState(INITIAL_FORM)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  const teamRequired = form.role !== "CEO"
 
   async function handleCreate() {
     if (!form.name || !form.email || !form.password) return
@@ -17,7 +22,13 @@ export default function AddUserButton() {
     const res = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        team: teamRequired ? form.team : null,
+      }),
     })
     if (!res.ok) {
       const data = await res.json()
@@ -26,7 +37,7 @@ export default function AddUserButton() {
       return
     }
     router.refresh()
-    setForm({ name: "", email: "", password: "", role: "EDITOR" })
+    setForm(INITIAL_FORM)
     setOpen(false)
     setLoading(false)
   }
@@ -84,9 +95,26 @@ export default function AddUserButton() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-bloom"
                 >
                   <option value="EDITOR">Editor</option>
+                  <option value="STRATEGIST">Strategist</option>
                   <option value="CEO">CEO</option>
                 </select>
               </div>
+              {teamRequired && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Team</label>
+                  <select
+                    value={form.team}
+                    onChange={(e) => setForm((f) => ({ ...f, team: e.target.value as TeamCode }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-bloom"
+                  >
+                    {Object.values(TEAMS).map((t) => (
+                      <option key={t.code} value={t.code}>
+                        {form.role === "STRATEGIST" ? t.strategistName : t.editorName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
             <div className="flex justify-end gap-3 mt-5">

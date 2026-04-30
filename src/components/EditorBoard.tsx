@@ -17,6 +17,7 @@ type Card = {
   usedInAd: string | null
   adNumber: string | null
   projectType: string | null
+  team: string | null
   transferStatus: string | null
   transferError: string | null
   transferredAt: string | null
@@ -60,7 +61,17 @@ const EDITOR_COLUMNS = [
 
 const NEWEST_FIRST_EDITOR = new Set(["COMPLETE", "PAID"])
 
-export default function EditorBoard({ cards: initialCards, userRole }: { cards: Card[]; userRole: Role }) {
+export default function EditorBoard({
+  cards: initialCards,
+  userRole,
+  title = "Editor Board",
+  readOnly = false,
+}: {
+  cards: Card[]
+  userRole: Role
+  title?: string
+  readOnly?: boolean
+}) {
   const router = useRouter()
   const [cards, setCards] = useState(initialCards)
   const [selected, setSelected] = useState<Card | null>(null)
@@ -81,6 +92,7 @@ export default function EditorBoard({ cards: initialCards, userRole }: { cards: 
   }, {} as Record<string, Card[]>)
 
   async function performMove(cardId: string, colId: string) {
+    if (readOnly) return
     setCards((prev) => prev.map((c) => c.id === cardId ? { ...c, editorStatus: colId } : c))
     await fetch(`/api/creatives/${cardId}`, {
       method: "PATCH",
@@ -110,8 +122,11 @@ export default function EditorBoard({ cards: initialCards, userRole }: { cards: 
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Editor Board</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">Editing pipeline</p>
+          <h1 className="text-2xl font-bold text-white">{title}</h1>
+          <p className="text-sm text-zinc-400 mt-0.5">
+            Editing pipeline
+            {readOnly && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300">view only</span>}
+          </p>
         </div>
         <div className="text-sm text-zinc-400">{cards.length} projects</div>
       </div>
@@ -562,12 +577,15 @@ function TransferSection({ card }: { card: Card }) {
     router.refresh()
   }
 
+  // Folder format is determined server-side; client just mirrors it for display.
+  const teamFolder = card.team ? `/Ads/${card.team}` : "/Ads"
+
   if (status === "DONE") {
     return (
       <div className="border border-green-200 bg-green-50 rounded-xl p-4">
         <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Dropbox transfer</p>
         <p className="text-sm text-green-800">
-          ✓ Transferred to <span className="font-mono">{path ?? "/Ads"}</span> as{" "}
+          ✓ Transferred to <span className="font-mono">{path ?? teamFolder}</span> as{" "}
           <span className="font-mono">{card.adNumber}V1–V3</span>
         </p>
       </div>
@@ -580,7 +598,7 @@ function TransferSection({ card }: { card: Card }) {
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Dropbox transfer</p>
         <p className="text-xs text-gray-500 mt-1">
           Downloads the 3 files from the editor&apos;s Drive folder and uploads them to{" "}
-          <span className="font-mono">/Ads</span> as{" "}
+          <span className="font-mono">{teamFolder}</span> as{" "}
           <span className="font-mono">{card.adNumber}V1</span>,{" "}
           <span className="font-mono">V2</span>, <span className="font-mono">V3</span>.
         </p>

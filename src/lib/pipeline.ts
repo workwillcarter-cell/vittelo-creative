@@ -44,14 +44,14 @@ export function nextStage(stage: Stage): Stage | null {
 
 export function canAdvance(stage: Stage, role: Role): boolean {
   if (role === "CEO") return stage === "IDEATION" || stage === "AI_REVIEW" || stage === "EDITOR_REVIEW"
-  if (role === "AI_GENERATOR") return stage === "AI_GENERATION"
+  if (role === "STRATEGIST") return stage === "AI_GENERATION"
   if (role === "EDITOR") return stage === "EDITING"
   return false
 }
 
 export function canView(stage: Stage, role: Role): boolean {
   if (role === "CEO") return true
-  if (role === "AI_GENERATOR") return ["READY", "AI_GENERATION", "AI_REVIEW"].includes(stage)
+  if (role === "STRATEGIST") return ["READY", "AI_GENERATION", "AI_REVIEW"].includes(stage)
   if (role === "EDITOR") return ["AI_REVIEW", "EDITING", "EDITOR_REVIEW"].includes(stage)
   return false
 }

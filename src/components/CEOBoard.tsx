@@ -124,7 +124,21 @@ const TOTAL_COLS = 13 // 0=concept 1=brief 2=product 3=style 4=landingPage 5=sta
 
 type NavDir = "tab" | "shift-tab" | "enter"
 
-export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; unassigned: Creative[] }) {
+export default function CEOBoard({
+  batches,
+  unassigned,
+  title = "CEO Board",
+  subtitle = "Creative concept tracking",
+  teamCode,
+  readOnly = false,
+}: {
+  batches: Batch[]
+  unassigned: Creative[]
+  title?: string
+  subtitle?: string
+  teamCode?: string
+  readOnly?: boolean
+}) {
   const router = useRouter()
   const [addingConcept, setAddingConcept] = useState(false)
   const [newConcept, setNewConcept] = useState("")
@@ -149,12 +163,13 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
   }
 
   async function addConcept() {
+    if (readOnly) return
     if (!newConcept.trim() || saving) return
     setSaving(true)
     await fetch("/api/creatives", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concept: newConcept.trim() }),
+      body: JSON.stringify({ concept: newConcept.trim(), team: teamCode }),
     })
     setNewConcept("")
     setAddingConcept(false)
@@ -163,6 +178,7 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
   }
 
   async function updateField(id: string, field: string, value: unknown) {
+    if (readOnly) return
     await fetch(`/api/creatives/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -172,12 +188,14 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
   }
 
   async function deleteCreative(id: string, concept: string) {
+    if (readOnly) return
     if (!confirm(`Delete "${concept}"? This cannot be undone.`)) return
     await fetch(`/api/creatives/${id}`, { method: "DELETE" })
     router.refresh()
   }
 
   async function renameBatch(id: string, name: string) {
+    if (readOnly) return
     await fetch(`/api/batches/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -192,8 +210,11 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">CEO Board</h1>
-          <p className="text-sm text-bloom-soft/80 mt-0.5">Creative concept tracking</p>
+          <h1 className="text-2xl font-bold text-white">{title}</h1>
+          <p className="text-sm text-bloom-soft/80 mt-0.5">
+            {subtitle}
+            {readOnly && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300">view only</span>}
+          </p>
         </div>
         <div className="text-sm text-bloom-soft/70">
           {totalConcepts} concepts · {batches.length} batches
@@ -230,7 +251,7 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
                 </span>
               </td>
             </tr>
-            <tr>
+            {!readOnly && <tr>
               <td colSpan={COL_SPAN} className="px-3 py-2 border-b border-zinc-700">
                 {addingConcept ? (
                   <div className="flex items-center gap-2">
@@ -262,7 +283,7 @@ export default function CEOBoard({ batches, unassigned }: { batches: Batch[]; un
                   </button>
                 )}
               </td>
-            </tr>
+            </tr>}
             {planning.map((creative, i) => (
               <CreativeRow
                 key={creative.id}

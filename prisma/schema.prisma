@@ -9,7 +9,7 @@ datasource db {
 
 enum Role {
   CEO
-  AI_GENERATOR
+  STRATEGIST
   EDITOR
 }
 
@@ -38,6 +38,7 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(EDITOR)
+  team      String?  // ZAL or VAL; null for CEO
   createdAt DateTime @default(now())
 
   batches   Batch[]
@@ -51,6 +52,7 @@ model Batch {
   number      Int?
   description String?
   sealed      Boolean    @default(false)
+  team        String?    // ZAL or VAL — Vittelo runs one batch per team
   createdAt   DateTime   @default(now())
   createdById String
   createdBy   User       @relation(fields: [createdById], references: [id])
@@ -76,6 +78,7 @@ model Creative {
   projectType      String?
   style            String?
   landingPage      String?
+  team             String?  // ZAL or VAL — which team owns this creative
   aigNotes         String?
   needsRevision    Boolean  @default(false)
   revisionDetails  String?

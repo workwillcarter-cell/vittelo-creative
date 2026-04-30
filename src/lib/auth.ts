@@ -12,7 +12,12 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       role: Role
+      team: string | null
     }
+  }
+  interface User {
+    role: Role
+    team: string | null
   }
 }
 
@@ -20,6 +25,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     role: Role
     id: string
+    team: string | null
   }
 }
 
@@ -38,7 +44,7 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null
         const valid = await bcrypt.compare(credentials.password, user.password)
         if (!valid) return null
-        return { id: user.id, name: user.name, email: user.email, role: user.role }
+        return { id: user.id, name: user.name, email: user.email, role: user.role, team: user.team }
       },
     }),
   ],
@@ -47,6 +53,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as unknown as { role: Role }).role
         token.id = user.id as string
+        token.team = (user as unknown as { team: string | null }).team
       }
       return token
     },
@@ -54,6 +61,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.role = token.role
         session.user.id = token.id
+        session.user.team = token.team
       }
       return session
     },

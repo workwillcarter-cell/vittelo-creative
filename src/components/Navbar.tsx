@@ -5,14 +5,17 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import type { Role } from "@/generated/prisma/client"
+import { TEAMS, teamFromCode, type TeamCode } from "@/lib/teams"
 
 const ROLE_LABELS: Record<Role, string> = {
   CEO: "CEO",
-  AI_GENERATOR: "AI Generator", // unused in Vittelo; kept for type compatibility
+  STRATEGIST: "Strategist",
   EDITOR: "Editor",
 }
 
-export default function Navbar({ user }: { user: { name?: string | null; role: Role } }) {
+type NavUser = { name?: string | null; role: Role; team: string | null }
+
+export default function Navbar({ user }: { user: NavUser }) {
   const path = usePathname()
 
   const navLink = (href: string, label: string) => {
@@ -34,6 +37,28 @@ export default function Navbar({ user }: { user: { name?: string | null; role: R
     )
   }
 
+  // Each role sees a different set of board links.
+  // CEO and STRATEGIST see all 4; EDITOR only sees their own editor board.
+  const boardLinks: { href: string; label: string }[] = []
+  if (user.role === "CEO" || user.role === "STRATEGIST") {
+    for (const code of Object.keys(TEAMS) as TeamCode[]) {
+      const t = TEAMS[code]
+      boardLinks.push({ href: `/dashboard/${t.slug}/strategy`, label: t.strategistName })
+      boardLinks.push({ href: `/dashboard/${t.slug}/editor`,   label: t.editorName })
+    }
+  } else if (user.role === "EDITOR") {
+    const t = teamFromCode(user.team)
+    if (t) boardLinks.push({ href: `/dashboard/${t.slug}/editor`, label: t.editorName })
+  }
+
+  // Display the personalised role label (e.g., "Zalan Strategy") when team-bound.
+  let roleLabel: string = ROLE_LABELS[user.role]
+  const team = teamFromCode(user.team)
+  if (team) {
+    if (user.role === "STRATEGIST") roleLabel = team.strategistName
+    if (user.role === "EDITOR")     roleLabel = team.editorName
+  }
+
   return (
     <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-7">
@@ -47,15 +72,16 @@ export default function Navbar({ user }: { user: { name?: string | null; role: R
             className="h-7 w-auto"
           />
         </Link>
-        {(user.role === "CEO" || user.role === "EDITOR") && navLink("/dashboard", "CEO Board")}
-        {(user.role === "CEO" || user.role === "EDITOR") && navLink("/dashboard/editor", "Editor Board")}
+        {boardLinks.map((l) => (
+          <span key={l.href}>{navLink(l.href, l.label)}</span>
+        ))}
         {user.role === "CEO" && navLink("/dashboard/team", "Team")}
         {user.role === "CEO" && navLink("/dashboard/setup", "Setup")}
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-bloom-charcoal">{user.name}</p>
-          <p className="text-xs text-gray-400">{ROLE_LABELS[user.role]}</p>
+          <p className="text-xs text-gray-400">{roleLabel}</p>
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
