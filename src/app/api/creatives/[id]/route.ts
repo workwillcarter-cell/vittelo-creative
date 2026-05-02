@@ -162,9 +162,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  if (session.user.role !== "CEO") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id } = await params
+
+  const ownership = await prisma.creative.findUnique({ where: { id }, select: { team: true } })
+  if (!ownership) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (!ownership.team || !canWriteTeam({ role: session.user.role, team: session.user.team }, ownership.team as TeamCode)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   await prisma.$transaction([
     prisma.stageHistory.deleteMany({ where: { creativeId: id } }),

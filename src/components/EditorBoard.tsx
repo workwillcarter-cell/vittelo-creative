@@ -108,10 +108,10 @@ export default function EditorBoard({
     setDragOverColId(null)
     dragIdRef.current = null
     if (!id) return
+    if (readOnly) return
     const card = cards.find((c) => c.id === id)
     if (!card || card.editorStatus === colId) return
     if (colId === "COMPLETE") {
-      if (userRole !== "CEO") return
       setConfirmMove({ cardId: id, colId })
       return
     }
@@ -155,10 +155,12 @@ export default function EditorBoard({
                     <EditorCard
                       key={card.id}
                       card={card}
+                      userRole={userRole}
                       isDragging={draggingId === card.id}
                       onClick={() => setSelected(card)}
                       onDragStart={() => { dragIdRef.current = card.id; setDraggingId(card.id) }}
                       onDragEnd={() => { setDraggingId(null); setDragOverColId(null); dragIdRef.current = null }}
+                      onCardUpdate={(updated) => setCards((prev) => prev.map((c) => c.id === updated.id ? updated : c))}
                     />
                   ))}
                   {colCards.length === 0 && (
@@ -177,6 +179,7 @@ export default function EditorBoard({
         <CardModal
           card={selected}
           userRole={userRole}
+          readOnly={readOnly}
           onClose={() => setSelected(null)}
           onUpdate={(updated) => setSelected(updated)}
           onMarkComplete={(cardId) => setConfirmMove({ cardId, colId: "COMPLETE" })}
@@ -216,15 +219,46 @@ export default function EditorBoard({
   )
 }
 
-function EditorCard({ card, isDragging, onClick, onDragStart, onDragEnd }: {
+function EditorCard({ card, userRole, isDragging, onClick, onDragStart, onDragEnd, onCardUpdate }: {
   card: Card
+  userRole: Role
   isDragging: boolean
   onClick: () => void
   onDragStart: () => void
   onDragEnd: () => void
+  onCardUpdate: (updated: Card) => void
 }) {
+  const router = useRouter()
   const revisions = parseRevisions(card.editorRevisionDetails)
   const openRevisions = revisions.filter((r) => !r.complete)
+  const [transferring, setTransferring] = useState(false)
+
+  const transferEligible = userRole === "CEO"
+    && (card.editorStatus === "COMPLETE" || card.editorStatus === "PAID")
+    && !!card.adNumber
+
+  const status = transferring ? "IN_PROGRESS" : card.transferStatus
+
+  async function quickTransfer(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!card.editorDriveLink || transferring || status === "IN_PROGRESS") return
+    setTransferring(true)
+    onCardUpdate({ ...card, transferStatus: "IN_PROGRESS", transferError: null })
+    try {
+      const res = await fetch(`/api/creatives/${card.id}/transfer`, { method: "POST" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        onCardUpdate({ ...card, transferStatus: "FAILED", transferError: json.error ?? `Transfer failed (${res.status})` })
+      } else {
+        onCardUpdate({ ...card, transferStatus: "DONE", transferError: null, dropboxPath: card.team ? `/Ads/${card.team}` : "/Ads" })
+      }
+    } catch (err) {
+      onCardUpdate({ ...card, transferStatus: "FAILED", transferError: err instanceof Error ? err.message : "Network error" })
+    } finally {
+      setTransferring(false)
+      router.refresh()
+    }
+  }
 
   return (
     <div
@@ -232,8 +266,36 @@ function EditorCard({ card, isDragging, onClick, onDragStart, onDragEnd }: {
       onClick={onClick}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart() }}
       onDragEnd={onDragEnd}
-      className={`bg-white border border-gray-200 rounded-xl p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none ${isDragging ? "opacity-40 scale-95" : ""}`}
+      className={`relative bg-white border border-gray-200 rounded-xl p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none ${transferEligible ? "pr-11" : ""} ${isDragging ? "opacity-40 scale-95" : ""}`}
     >
+      {transferEligible && (
+        <button
+          onClick={quickTransfer}
+          disabled={!card.editorDriveLink || status === "IN_PROGRESS" || status === "DONE"}
+          title={
+            !card.editorDriveLink ? "No editor Drive link"
+            : status === "DONE" ? "Already uploaded"
+            : status === "IN_PROGRESS" ? "Transferring…"
+            : status === "FAILED" ? "Retry transfer to Dropbox"
+            : "Transfer to Dropbox"
+          }
+          className={`absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors disabled:cursor-not-allowed ${
+            status === "DONE"
+              ? "bg-green-100 text-green-700 disabled:opacity-100"
+              : status === "FAILED"
+              ? "bg-red-100 text-red-700 hover:bg-red-200"
+              : status === "IN_PROGRESS"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+          }`}
+        >
+          {status === "DONE" ? "✓"
+            : status === "IN_PROGRESS" ? <span className="animate-pulse">⇪</span>
+            : status === "FAILED" ? "↻"
+            : "⇪"}
+        </button>
+      )}
+
       {card.projectType && (
         <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mb-2 ${PRODUCT_COLORS[card.projectType] ?? "bg-gray-100 text-gray-600"}`}>
           {card.projectType}
@@ -268,13 +330,22 @@ function EditorCard({ card, isDragging, onClick, onDragStart, onDragEnd }: {
       {card.usedInAd && (
         <div className="mt-2 text-xs text-purple-600 font-medium">Used: {card.usedInAd}</div>
       )}
+
+      {(card.editorStatus === "COMPLETE" || card.editorStatus === "PAID") && status && (
+        <div className="mt-2 text-xs font-medium">
+          {status === "DONE"        && <span className="text-green-700">✓ Uploaded to Dropbox</span>}
+          {status === "IN_PROGRESS" && <span className="text-blue-700">⏳ Uploading to Dropbox…</span>}
+          {status === "FAILED"      && <span className="text-red-700">⚠ Dropbox upload failed</span>}
+        </div>
+      )}
     </div>
   )
 }
 
-function CardModal({ card, userRole, onClose, onUpdate, onMarkComplete }: {
+function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete }: {
   card: Card
   userRole: Role
+  readOnly: boolean
   onClose: () => void
   onUpdate: (c: Card) => void
   onMarkComplete: (cardId: string) => void
@@ -492,7 +563,7 @@ function CardModal({ card, userRole, onClose, onUpdate, onMarkComplete }: {
             )}
           </div>
 
-          {isCEO && card.editorStatus === "COMPLETE" && card.adNumber && (
+          {isCEO && (card.editorStatus === "COMPLETE" || card.editorStatus === "PAID") && card.adNumber && (
             <TransferSection card={card} />
           )}
         </div>
@@ -505,7 +576,7 @@ function CardModal({ card, userRole, onClose, onUpdate, onMarkComplete }: {
                 ← {prevCol.label}
               </button>
             )}
-            {nextCol && (nextCol.id !== "COMPLETE" || userRole === "CEO") && (
+            {nextCol && !readOnly && (
               <button
                 onClick={() => {
                   if (nextCol.id === "COMPLETE") {
@@ -523,7 +594,7 @@ function CardModal({ card, userRole, onClose, onUpdate, onMarkComplete }: {
             )}
           </div>
           <div className="flex gap-2">
-            {userRole === "CEO" && (
+            {!readOnly && (
               <button
                 onClick={deleteCard}
                 disabled={saving}
