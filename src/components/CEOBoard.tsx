@@ -315,7 +315,7 @@ export default function CEOBoard({
                         {batch.sealed && (
                           <span className="text-xs bg-zinc-700 text-gray-300 px-1.5 py-0.5 rounded-full">complete</span>
                         )}
-                        {batch.sealed && isCEO && <BatchActions batch={batch} />}
+                        {isCEO && <BatchActions batch={batch} />}
                       </div>
                     </td>
                   </tr>
@@ -412,7 +412,6 @@ function CreativeRow({
 function BatchActions({ batch }: { batch: Batch }) {
   const router = useRouter()
   const [transferring, setTransferring] = useState(false)
-  const [launching, setLaunching] = useState(false)
   const [transferMsg, setTransferMsg] = useState<string | null>(null)
 
   const pendingTransfers = batch.creatives.filter(
@@ -420,7 +419,6 @@ function BatchActions({ batch }: { batch: Batch }) {
   ).length
   const allTransferred =
     pendingTransfers === 0 && batch.creatives.some((c) => c.transferStatus === "DONE")
-  const allLaunched = batch.creatives.every((c) => c.ceoStatus === "LAUNCHED")
 
   async function transferBatch() {
     if (transferring) return
@@ -443,21 +441,6 @@ function BatchActions({ batch }: { batch: Batch }) {
       setTransferMsg(err instanceof Error ? err.message : "Network error")
     }
     setTransferring(false)
-    router.refresh()
-  }
-
-  async function launchBatch() {
-    if (launching) return
-    if (!confirm(`Mark all ${batch.creatives.length} ads in "${batch.name}" as Launched? This will set their status to Launched and stamp today's launch date on any that don't have one.`)) {
-      return
-    }
-    setLaunching(true)
-    try {
-      await fetch(`/api/batches/${batch.id}/launch`, { method: "POST" })
-    } catch {
-      // ignore — refresh will reflect actual state
-    }
-    setLaunching(false)
     router.refresh()
   }
 
@@ -485,14 +468,6 @@ function BatchActions({ batch }: { batch: Batch }) {
           : allTransferred
           ? "Transferred to Dropbox ✓"
           : `Transfer Batch to Dropbox${pendingTransfers > 0 ? ` (${pendingTransfers})` : ""}`}
-      </button>
-      <button
-        onClick={launchBatch}
-        disabled={launching || allLaunched}
-        title={allLaunched ? "All ads in this batch are already Launched" : "Mark every ad in this batch as Launched"}
-        className="text-xs font-medium bg-pink-600 text-white px-3 py-1 rounded-md hover:bg-pink-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {launching ? "Launching..." : allLaunched ? "Batch Launched ✓" : "Mark Batch as Launched"}
       </button>
     </div>
   )
