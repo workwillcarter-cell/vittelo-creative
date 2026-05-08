@@ -23,7 +23,7 @@ export default async function TeamStrategyPage({ params }: { params: Promise<{ t
     extraInfo: true, launchDate: true, result: true, learnings: true,
     spend: true, roas: true, stage: true, ceoStatus: true,
     projectType: true, style: true, landingPage: true,
-    editorDriveLink: true,
+    editorDriveLink: true, editorStatus: true, transferStatus: true,
   }
 
   const batches = await prisma.batch.findMany({
@@ -52,6 +52,7 @@ export default async function TeamStrategyPage({ params }: { params: Promise<{ t
       subtitle="Creative concept tracking"
       teamCode={team.code}
       readOnly={!writable}
+      isCEO={session.user.role === "CEO"}
     />
   )
 }
