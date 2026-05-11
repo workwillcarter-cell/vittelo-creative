@@ -14,6 +14,7 @@ type Card = {
   editorNeedsRevision: boolean
   editorRevisionDetails: string | null
   editorRevisionComplete: boolean
+  editorPaid: boolean
   usedInAd: string | null
   adNumber: string | null
   projectType: string | null
@@ -60,6 +61,9 @@ const EDITOR_COLUMNS = [
 ]
 
 const NEWEST_FIRST_EDITOR = new Set(["COMPLETE", "PAID"])
+
+// Vittelo: flat $8 per editor project.
+const EDITOR_RATE = 8
 
 export default function EditorBoard({
   cards: initialCards,
@@ -118,6 +122,12 @@ export default function EditorBoard({
     await performMove(id, colId)
   }
 
+  const isCEO = userRole === "CEO"
+  const unpaidCount = cards.filter(
+    (c) => (c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid,
+  ).length
+  const unpaidTotal = unpaidCount * EDITOR_RATE
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
@@ -128,7 +138,17 @@ export default function EditorBoard({
             {readOnly && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300">view only</span>}
           </p>
         </div>
-        <div className="text-sm text-zinc-400">{cards.length} projects</div>
+        <div className="flex items-center gap-4">
+          {isCEO && (
+            <div className="text-sm flex items-baseline gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700">
+              <span className={unpaidCount > 0 ? "text-amber-300 font-semibold" : "text-zinc-400 font-semibold"}>
+                ${unpaidTotal} unpaid
+              </span>
+              <span className="text-zinc-500 text-xs">({unpaidCount})</span>
+            </div>
+          )}
+          <div className="text-sm text-zinc-400">{cards.length} projects</div>
+        </div>
       </div>
 
       <div className="overflow-x-auto pb-1">
@@ -239,6 +259,21 @@ function EditorCard({ card, userRole, isDragging, onClick, onDragStart, onDragEn
 
   const status = transferring ? "IN_PROGRESS" : card.transferStatus
 
+  const showPaidPill = userRole === "CEO"
+    && (card.editorStatus === "COMPLETE" || card.editorStatus === "PAID")
+
+  async function togglePaid(e: React.MouseEvent) {
+    e.stopPropagation()
+    const next = !card.editorPaid
+    onCardUpdate({ ...card, editorPaid: next })
+    await fetch(`/api/creatives/${card.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editorPaid: next }),
+    })
+    router.refresh()
+  }
+
   async function quickTransfer(e: React.MouseEvent) {
     e.stopPropagation()
     if (!card.editorDriveLink || transferring || status === "IN_PROGRESS") return
@@ -338,6 +373,20 @@ function EditorCard({ card, userRole, isDragging, onClick, onDragStart, onDragEn
           {status === "FAILED"      && <span className="text-red-700">⚠ Dropbox upload failed</span>}
         </div>
       )}
+
+      {showPaidPill && (
+        <button
+          onClick={togglePaid}
+          title={card.editorPaid ? "Mark as unpaid" : "Mark as paid"}
+          className={`mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+            card.editorPaid
+              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+              : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+          }`}
+        >
+          {card.editorPaid ? `✓ Paid $${EDITOR_RATE}` : `$${EDITOR_RATE} unpaid`}
+        </button>
+      )}
     </div>
   )
 }
@@ -360,8 +409,10 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
   const [revisions, setRevisions] = useState<RevisionItem[]>(() => parseRevisions(card.editorRevisionDetails))
   const [newRevText, setNewRevText] = useState("")
 
-  const isCEO    = userRole === "CEO"
-  const isEditor = userRole === "EDITOR"
+  const isCEO        = userRole === "CEO"
+  const isEditor     = userRole === "EDITOR"
+  const isStrategist = userRole === "STRATEGIST"
+  const canManageRevisions = isCEO || isStrategist
 
   function addRevision() {
     const text = newRevText.trim()
@@ -504,7 +555,7 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
 
             {revisions.length === 0 && (
               <p className="text-xs text-gray-400">
-                {isCEO ? "No revisions yet." : "No revisions requested."}
+                {canManageRevisions ? "No revisions yet." : "No revisions requested."}
               </p>
             )}
 
@@ -530,7 +581,7 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
                       )}
                     </button>
                   )}
-                  {isCEO && (
+                  {canManageRevisions && (
                     <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center ${rev.complete ? "bg-green-500" : "bg-gray-200"}`}>
                       {rev.complete && (
                         <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none">
@@ -542,7 +593,7 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
                   <p className={`flex-1 text-sm ${rev.complete ? "line-through text-gray-400" : "text-gray-700"}`}>
                     {rev.text}
                   </p>
-                  {isCEO && (
+                  {canManageRevisions && (
                     <button
                       onClick={() => setRevisions((r) => r.filter((x) => x.id !== rev.id))}
                       className="text-gray-300 hover:text-red-400 text-sm flex-shrink-0"
@@ -554,7 +605,7 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
               ))}
             </div>
 
-            {isCEO && (
+            {canManageRevisions && (
               <div className="flex gap-2 pt-1">
                 <input
                   type="text"

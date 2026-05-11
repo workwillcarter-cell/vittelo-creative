@@ -25,6 +25,7 @@ export default async function TeamEditorPage({ params }: { params: Promise<{ tea
       id: true, concept: true, briefLink: true,
       editorDriveLink: true, editorNotes: true, editorStatus: true,
       editorNeedsRevision: true, editorRevisionDetails: true, editorRevisionComplete: true,
+      editorPaid: true,
       usedInAd: true, adNumber: true, projectType: true, team: true,
       transferStatus: true, transferError: true, transferredAt: true, dropboxPath: true,
       updatedAt: true,

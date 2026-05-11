@@ -91,6 +91,7 @@ model Creative {
   editorRevisionComplete Boolean  @default(false)
   editorDriveLink        String?
   usedInAd               String?
+  editorPaid             Boolean  @default(false)
 
   transferStatus String?
   transferError  String?

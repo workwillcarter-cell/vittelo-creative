@@ -42,8 +42,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     adNumber, launchDate, result, spend, roas, extraInfo, ceoStatus,
     projectType, style, landingPage, needsRevision, revisionDetails, revisionComplete,
     editorStatus, editorNotes, editorNeedsRevision, editorRevisionDetails, editorRevisionComplete,
-    editorDriveLink, usedInAd,
+    editorDriveLink, usedInAd, editorPaid,
   } = body
+
+  // editorPaid is CEO-only — strangers can't mark someone else's payment status
+  if (editorPaid !== undefined && session.user.role !== "CEO") {
+    return NextResponse.json({ error: "Only CEO can change paid status" }, { status: 403 })
+  }
 
   // Auto-set launch date when CEO marks Launched
   let autoLaunchDate: Date | undefined = undefined
@@ -148,6 +153,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(editorRevisionComplete !== undefined && { editorRevisionComplete }),
       ...(editorDriveLink !== undefined && { editorDriveLink: editorDriveLink || null }),
       ...(usedInAd !== undefined && { usedInAd: usedInAd || null }),
+      ...(editorPaid !== undefined && { editorPaid: Boolean(editorPaid) }),
       ...(batchId !== undefined && { batchId }),
       ...(autoLaunchDate !== undefined && { launchDate: autoLaunchDate }),
       ...(autoEditorStatus !== undefined && { editorStatus: autoEditorStatus }),
