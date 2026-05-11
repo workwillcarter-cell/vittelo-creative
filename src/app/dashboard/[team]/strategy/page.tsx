@@ -26,7 +26,7 @@ export default async function TeamStrategyPage({ params }: { params: Promise<{ t
     editorDriveLink: true, editorStatus: true, transferStatus: true,
   }
 
-  const batches = await prisma.batch.findMany({
+  const batchesRaw = await prisma.batch.findMany({
     where: { creatives: { some: { team: team.code } } },
     orderBy: { createdAt: "desc" },
     include: {
@@ -37,6 +37,20 @@ export default async function TeamStrategyPage({ params }: { params: Promise<{ t
       },
     },
   })
+
+  // Within each batch: launched-last, then by product (projectType), then by landing page.
+  // Empty product/landing-page values group at the bottom of their section. Array.sort is
+  // stable, so createdAt order is preserved when all three keys tie.
+  const batches = batchesRaw.map((b) => ({
+    ...b,
+    creatives: [...b.creatives].sort((a, z) => {
+      const launchDelta = (a.ceoStatus === "LAUNCHED" ? 1 : 0) - (z.ceoStatus === "LAUNCHED" ? 1 : 0)
+      if (launchDelta !== 0) return launchDelta
+      const productDelta = (a.projectType || "￿").localeCompare(z.projectType || "￿")
+      if (productDelta !== 0) return productDelta
+      return (a.landingPage || "￿").localeCompare(z.landingPage || "￿")
+    }),
+  }))
 
   const unassigned = await prisma.creative.findMany({
     where: { batchId: null, team: team.code },
