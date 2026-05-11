@@ -48,6 +48,7 @@ export default async function TeamEditorPage({ params }: { params: Promise<{ tea
         userRole={session.user.role}
         title={team.editorName}
         readOnly={!writable}
+        teamCode={team.code}
       />
     </div>
   )

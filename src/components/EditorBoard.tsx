@@ -70,11 +70,13 @@ export default function EditorBoard({
   userRole,
   title = "Editor Board",
   readOnly = false,
+  teamCode,
 }: {
   cards: Card[]
   userRole: Role
   title?: string
   readOnly?: boolean
+  teamCode?: string
 }) {
   const router = useRouter()
   const [cards, setCards] = useState(initialCards)
@@ -127,6 +129,28 @@ export default function EditorBoard({
     (c) => (c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid,
   ).length
   const unpaidTotal = unpaidCount * EDITOR_RATE
+  const [markingAllPaid, setMarkingAllPaid] = useState(false)
+
+  async function markAllPaid() {
+    if (unpaidCount === 0 || markingAllPaid) return
+    if (!confirm(`Mark all ${unpaidCount} unpaid project${unpaidCount === 1 ? "" : "s"} as paid? ($${unpaidTotal} total)`)) return
+    setMarkingAllPaid(true)
+    setCards((prev) => prev.map((c) =>
+      (c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid
+        ? { ...c, editorPaid: true }
+        : c,
+    ))
+    try {
+      await fetch("/api/creatives/mark-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team: teamCode }),
+      })
+      router.refresh()
+    } finally {
+      setMarkingAllPaid(false)
+    }
+  }
 
   return (
     <div className="w-full">
@@ -140,11 +164,23 @@ export default function EditorBoard({
         </div>
         <div className="flex items-center gap-4">
           {isCEO && (
-            <div className="text-sm flex items-baseline gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700">
-              <span className={unpaidCount > 0 ? "text-amber-300 font-semibold" : "text-zinc-400 font-semibold"}>
-                ${unpaidTotal} unpaid
-              </span>
-              <span className="text-zinc-500 text-xs">({unpaidCount})</span>
+            <div className="flex items-center gap-2">
+              <div className="text-sm flex items-baseline gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700">
+                <span className={unpaidCount > 0 ? "text-amber-300 font-semibold" : "text-zinc-400 font-semibold"}>
+                  ${unpaidTotal} unpaid
+                </span>
+                <span className="text-zinc-500 text-xs">({unpaidCount})</span>
+              </div>
+              {unpaidCount > 0 && (
+                <button
+                  onClick={markAllPaid}
+                  disabled={markingAllPaid}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50"
+                  title={`Mark all ${unpaidCount} unpaid as paid`}
+                >
+                  {markingAllPaid ? "Marking…" : "Mark all paid"}
+                </button>
+              )}
             </div>
           )}
           <div className="text-sm text-zinc-400">{cards.length} projects</div>
