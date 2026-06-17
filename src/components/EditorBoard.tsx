@@ -492,7 +492,20 @@ function CardModal({ card, userRole, readOnly, onClose, onUpdate, onMarkComplete
   }
 
   async function moveCard(status: string) {
-    await patch({ editorStatus: status })
+    // Persist any unsaved field/revision edits along with the move so notes
+    // typed before clicking a column button aren't lost (e.g. a revision typed
+    // in the Edited card then sent to the Revision column).
+    const serialized = serializeRevisions(revisions)
+    const allComplete = revisions.length > 0 && revisions.every((r) => r.complete)
+    await patch({
+      editorStatus:           status,
+      editorDriveLink:        fields.editorDriveLink || null,
+      editorNotes:            fields.editorNotes || null,
+      usedInAd:               fields.usedInAd || null,
+      editorNeedsRevision:    revisions.length > 0,
+      editorRevisionDetails:  serialized,
+      editorRevisionComplete: allComplete,
+    })
     onClose()
   }
 
