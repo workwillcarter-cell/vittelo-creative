@@ -31,6 +31,7 @@ const PRODUCT_COLORS: Record<string, string> = {
   "Men's Classic": "bg-slate-200 text-slate-800",
   "Tactical":      "bg-orange-100 text-orange-700",
   "Women's":       "bg-pink-100 text-pink-700",
+  "Full Grain":    "bg-amber-100 text-amber-800",
 }
 
 type RevisionItem = { id: string; text: string; complete: boolean }

@@ -20,6 +20,7 @@ type Creative = {
   projectType: string | null
   style: string | null
   landingPage: string | null
+  country: string | null
   editorDriveLink: string | null
   editorStatus: string | null
   transferStatus: string | null
@@ -48,12 +49,24 @@ const CEO_STATUS_COLORS: Record<string, string> = {
 }
 
 // Internally still called projectType for DB compatibility — display label is "Product".
-const PROJECT_TYPES = ["Men's Classic", "Tactical", "Women's"]
+const PROJECT_TYPES = ["Men's Classic", "Tactical", "Women's", "Full Grain"]
 
 const PROJECT_TYPE_COLORS: Record<string, string> = {
   "Men's Classic": "bg-slate-200 text-slate-800",
   "Tactical":      "bg-orange-100 text-orange-700",
   "Women's":       "bg-pink-100 text-pink-700",
+  "Full Grain":    "bg-amber-100 text-amber-800",
+}
+
+// Countries the concept targets. "All 4" = Canada + USA + UK + Aus.
+const COUNTRIES = ["All 4", "Canada", "USA", "UK", "Aus"]
+
+const COUNTRY_COLORS: Record<string, string> = {
+  "All 4":  "bg-zinc-200 text-zinc-800",
+  "Canada": "bg-red-100 text-red-700",
+  "USA":    "bg-blue-100 text-blue-700",
+  "UK":     "bg-indigo-100 text-indigo-700",
+  "Aus":    "bg-green-100 text-green-700",
 }
 
 const LANDING_PAGES = [
@@ -121,8 +134,8 @@ const RESULT_COLORS: Record<Result, string> = {
   SPENT_BUT_POOR_PERFORMANCE: "bg-orange-100 text-orange-700",
 }
 
-const COL_SPAN = 14
-const TOTAL_COLS = 13 // 0=concept 1=brief 2=product 3=style 4=landingPage 5=status 6=adNumber 7=extraInfo 8=launchDate 9=result 10=learnings 11=spend 12=roas
+const COL_SPAN = 15
+const TOTAL_COLS = 14 // 0=concept 1=brief 2=product 3=country 4=style 5=landingPage 6=status 7=adNumber 8=extraInfo 9=launchDate 10=result 11=learnings 12=spend 13=roas
 
 type NavDir = "tab" | "shift-tab" | "enter"
 
@@ -147,13 +160,26 @@ export default function CEOBoard({
   const [addingConcept, setAddingConcept] = useState(false)
   const [newConcept, setNewConcept] = useState("")
   const [saving, setSaving] = useState(false)
+  const [query, setQuery] = useState("")
   const addInputRef = useRef<HTMLInputElement>(null)
 
+  // Search filter — matches across the concept's text fields
+  const q = query.trim().toLowerCase()
+  const matches = (c: Creative) =>
+    !q ||
+    [c.concept, c.extraInfo, c.learnings, c.adNumber, c.projectType, c.style, c.landingPage, c.country, c.result]
+      .some((v) => v != null && String(v).toLowerCase().includes(q))
+
   // Planning rows: sorted by ceoStatus (no-status → BRIEF_COMPLETE → MOVED_TO_AIG → MOVED_TO_EDITOR), then projectType
-  const planning = sortPlanning(unassigned)
+  const planning = sortPlanning(unassigned).filter(matches)
+
+  // Batches with their creatives filtered by search; empty batches drop out only while searching
+  const filteredBatches = q
+    ? batches.map((b) => ({ ...b, creatives: b.creatives.filter(matches) })).filter((b) => b.creatives.length > 0)
+    : batches
 
   // Flat ordered list of all rows (planning first, then batches newest→oldest)
-  const allRows = [...planning, ...batches.flatMap((b) => b.creatives)]
+  const allRows = [...planning, ...filteredBatches.flatMap((b) => b.creatives)]
 
   function navigate(rowIndex: number, colIndex: number, dir: NavDir) {
     let r = rowIndex
@@ -212,7 +238,7 @@ export default function CEOBoard({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">{title}</h1>
           <p className="text-sm text-bloom-soft/80 mt-0.5">
@@ -220,8 +246,28 @@ export default function CEOBoard({
             {readOnly && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300">view only</span>}
           </p>
         </div>
-        <div className="text-sm text-bloom-soft/70">
-          {totalConcepts} concepts · {batches.length} batches
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search concepts..."
+              className="text-sm text-gray-100 placeholder-zinc-500 bg-zinc-900 border border-zinc-600 rounded-lg pl-3 pr-8 py-1.5 w-64 focus:outline-none focus:ring-2 focus:ring-bloom"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-gray-200 text-base leading-none"
+                title="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="text-sm text-bloom-soft/70 whitespace-nowrap">
+            {totalConcepts} concept{totalConcepts !== 1 ? "s" : ""} · {filteredBatches.length} batch{filteredBatches.length !== 1 ? "es" : ""}
+          </div>
         </div>
       </div>
 
@@ -233,6 +279,7 @@ export default function CEOBoard({
               <th className="px-3 py-2.5 text-left min-w-[200px] border-b border-zinc-700">Concept</th>
               <th className="px-3 py-2.5 text-left w-20 border-b border-zinc-700">Brief</th>
               <th className="px-3 py-2.5 text-left w-32 border-b border-zinc-700">Product</th>
+              <th className="px-3 py-2.5 text-left w-28 border-b border-zinc-700">Countries</th>
               <th className="px-3 py-2.5 text-left w-32 border-b border-zinc-700">Style</th>
               <th className="px-3 py-2.5 text-left w-44 border-b border-zinc-700">Landing Page</th>
               <th className="px-3 py-2.5 text-left w-36 border-b border-zinc-700">Status</th>
@@ -255,7 +302,7 @@ export default function CEOBoard({
                 </span>
               </td>
             </tr>
-            {!readOnly && <tr>
+            {!readOnly && !q && <tr>
               <td colSpan={COL_SPAN} className="px-3 py-2 border-b border-zinc-700">
                 {addingConcept ? (
                   <div className="flex items-center gap-2">
@@ -301,9 +348,9 @@ export default function CEOBoard({
             ))}
 
             {/* Batched ads — newest first */}
-            {batches.map((batch) => {
-              const batchStartRow = planning.length + batches
-                .slice(0, batches.indexOf(batch))
+            {filteredBatches.map((batch) => {
+              const batchStartRow = planning.length + filteredBatches
+                .slice(0, filteredBatches.indexOf(batch))
                 .reduce((n, b) => n + b.creatives.length, 0)
               return (
                 <Fragment key={batch.id}>
@@ -333,6 +380,14 @@ export default function CEOBoard({
                 </Fragment>
               )
             })}
+
+            {q && allRows.length === 0 && (
+              <tr>
+                <td colSpan={COL_SPAN} className="px-4 py-8 text-center text-sm text-gray-500">
+                  No concepts match “{query}”.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -376,34 +431,37 @@ function CreativeRow({
         <ProjectTypeCell cellId={`${rowIndex}-2`} value={creative.projectType} onSave={(v) => onUpdate(creative.id, "projectType", v)} onNav={nav(2)} />
       </td>
       <td className="px-1 py-1">
-        <StyleCell cellId={`${rowIndex}-3`} value={creative.style} onSave={(v) => onUpdate(creative.id, "style", v)} onNav={nav(3)} />
+        <CountryCell cellId={`${rowIndex}-3`} value={creative.country} onSave={(v) => onUpdate(creative.id, "country", v)} onNav={nav(3)} />
       </td>
       <td className="px-1 py-1">
-        <LandingPageCell cellId={`${rowIndex}-4`} value={creative.landingPage} onSave={(v) => onUpdate(creative.id, "landingPage", v)} onNav={nav(4)} />
+        <StyleCell cellId={`${rowIndex}-4`} value={creative.style} onSave={(v) => onUpdate(creative.id, "style", v)} onNav={nav(4)} />
       </td>
       <td className="px-1 py-1">
-        <CEOStatusCell cellId={`${rowIndex}-5`} value={creative.ceoStatus} onSave={(v) => onUpdate(creative.id, "ceoStatus", v)} onNav={nav(5)} />
+        <LandingPageCell cellId={`${rowIndex}-5`} value={creative.landingPage} onSave={(v) => onUpdate(creative.id, "landingPage", v)} onNav={nav(5)} />
       </td>
       <td className="px-1 py-1">
-        <AdNumberCell cellId={`${rowIndex}-6`} value={creative.adNumber} driveLink={creative.editorDriveLink} onSave={(v) => onUpdate(creative.id, "adNumber", v)} onNav={nav(6)} />
+        <CEOStatusCell cellId={`${rowIndex}-6`} value={creative.ceoStatus} onSave={(v) => onUpdate(creative.id, "ceoStatus", v)} onNav={nav(6)} />
       </td>
       <td className="px-1 py-1">
-        <EditableCell cellId={`${rowIndex}-7`} value={creative.extraInfo ?? ""} onSave={(v) => onUpdate(creative.id, "extraInfo", v || null)} placeholder="—" multiline onNav={nav(7)} className="text-gray-300 text-xs" />
+        <AdNumberCell cellId={`${rowIndex}-7`} value={creative.adNumber} driveLink={creative.editorDriveLink} onSave={(v) => onUpdate(creative.id, "adNumber", v)} onNav={nav(7)} />
       </td>
       <td className="px-1 py-1">
-        <DateCell cellId={`${rowIndex}-8`} value={creative.launchDate} onSave={(v) => onUpdate(creative.id, "launchDate", v)} onNav={nav(8)} />
+        <EditableCell cellId={`${rowIndex}-8`} value={creative.extraInfo ?? ""} onSave={(v) => onUpdate(creative.id, "extraInfo", v || null)} placeholder="—" multiline onNav={nav(8)} className="text-gray-300 text-xs" />
       </td>
       <td className="px-1 py-1">
-        <ResultCell cellId={`${rowIndex}-9`} value={creative.result} onSave={(v) => onUpdate(creative.id, "result", v)} onNav={nav(9)} />
+        <DateCell cellId={`${rowIndex}-9`} value={creative.launchDate} onSave={(v) => onUpdate(creative.id, "launchDate", v)} onNav={nav(9)} />
       </td>
       <td className="px-1 py-1">
-        <EditableCell cellId={`${rowIndex}-10`} value={creative.learnings ?? ""} onSave={(v) => onUpdate(creative.id, "learnings", v || null)} placeholder="—" multiline onNav={nav(10)} className="text-gray-300 text-xs" />
+        <ResultCell cellId={`${rowIndex}-10`} value={creative.result} onSave={(v) => onUpdate(creative.id, "result", v)} onNav={nav(10)} />
       </td>
       <td className="px-1 py-1">
-        <NumberCell cellId={`${rowIndex}-11`} value={creative.spend} onSave={(v) => onUpdate(creative.id, "spend", v)} prefix="$" onNav={nav(11)} />
+        <EditableCell cellId={`${rowIndex}-11`} value={creative.learnings ?? ""} onSave={(v) => onUpdate(creative.id, "learnings", v || null)} placeholder="—" multiline onNav={nav(11)} className="text-gray-300 text-xs" />
       </td>
       <td className="px-1 py-1">
-        <NumberCell cellId={`${rowIndex}-12`} value={creative.roas} onSave={(v) => onUpdate(creative.id, "roas", v)} decimals={2} onNav={nav(12)} />
+        <NumberCell cellId={`${rowIndex}-12`} value={creative.spend} onSave={(v) => onUpdate(creative.id, "spend", v)} prefix="$" onNav={nav(12)} />
+      </td>
+      <td className="px-1 py-1">
+        <NumberCell cellId={`${rowIndex}-13`} value={creative.roas} onSave={(v) => onUpdate(creative.id, "roas", v)} decimals={2} onNav={nav(13)} />
       </td>
     </tr>
   )
@@ -582,6 +640,39 @@ function ProjectTypeCell({ value, onSave, cellId, onNav }: { value: string | nul
     <div data-cell={cellId} onClick={() => setEditing(true)} className="cursor-pointer min-h-[28px] px-2 py-1 rounded-lg hover:bg-zinc-700/60 transition-all">
       {value
         ? <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${PROJECT_TYPE_COLORS[value] ?? "bg-gray-100 text-gray-600"}`}>{value}</span>
+        : <span className="text-xs text-gray-500 italic">—</span>
+      }
+    </div>
+  )
+}
+
+function CountryCell({ value, onSave, cellId, onNav }: { value: string | null; onSave: (v: string | null) => void; cellId: string; onNav: (d: NavDir) => void }) {
+  const [editing, setEditing] = useState(false)
+
+  if (editing) {
+    return (
+      <select
+        autoFocus
+        defaultValue={value ?? ""}
+        onChange={(e) => { onSave(e.target.value || null); setEditing(false) }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") { e.preventDefault(); setEditing(false); onNav(e.shiftKey ? "shift-tab" : "tab") }
+          if (e.key === "Enter") { setEditing(false); onNav("enter") }
+          if (e.key === "Escape") setEditing(false)
+        }}
+        className="text-xs text-gray-100 border border-bloom rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-bloom/40 bg-zinc-900"
+      >
+        <option value="">— No country</option>
+        {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+    )
+  }
+
+  return (
+    <div data-cell={cellId} onClick={() => setEditing(true)} className="cursor-pointer min-h-[28px] px-2 py-1 rounded-lg hover:bg-zinc-700/60 transition-all">
+      {value
+        ? <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${COUNTRY_COLORS[value] ?? "bg-gray-100 text-gray-600"}`}>{value}</span>
         : <span className="text-xs text-gray-500 italic">—</span>
       }
     </div>

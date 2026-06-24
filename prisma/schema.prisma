@@ -78,6 +78,7 @@ model Creative {
   projectType      String?
   style            String?
   landingPage      String?
+  country          String?  // All 4 / Canada / USA / UK / Aus — which markets the concept targets
   team             String?  // ZAL or VAL — which team owns this creative
   aigNotes         String?
   needsRevision    Boolean  @default(false)

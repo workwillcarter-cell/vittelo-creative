@@ -22,7 +22,7 @@ export default async function TeamStrategyPage({ params }: { params: Promise<{ t
     id: true, concept: true, briefLink: true, adNumber: true,
     extraInfo: true, launchDate: true, result: true, learnings: true,
     spend: true, roas: true, stage: true, ceoStatus: true,
-    projectType: true, style: true, landingPage: true,
+    projectType: true, style: true, landingPage: true, country: true,
     editorDriveLink: true, editorStatus: true, transferStatus: true,
   }
 
