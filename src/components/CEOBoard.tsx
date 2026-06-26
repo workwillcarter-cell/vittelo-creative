@@ -81,6 +81,7 @@ const LANDING_PAGES = [
   "Men's Collections page",
   "Women's Collections Page",
   "Canadian men listicle",
+  "Full Grain PDP",
 ]
 
 const LANDING_PAGE_COLORS: Record<string, string> = {
@@ -95,6 +96,7 @@ const LANDING_PAGE_COLORS: Record<string, string> = {
   "Men's Collections page":           "bg-emerald-100 text-emerald-700",
   "Women's Collections Page":         "bg-sky-100 text-sky-700",
   "Canadian men listicle":            "bg-gray-200 text-gray-700",
+  "Full Grain PDP":                   "bg-amber-100 text-amber-800",
 }
 
 const STYLES = ["Net New", "Iteration", "Shotgun/Random"]
