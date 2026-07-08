@@ -127,7 +127,7 @@ export default function EditorBoard({
 
   const isCEO = userRole === "CEO"
   const unpaidCount = cards.filter(
-    (c) => (c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid,
+    (c) => (c.editorStatus === "EDITED" || c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid,
   ).length
   const unpaidTotal = unpaidCount * EDITOR_RATE
   const [markingAllPaid, setMarkingAllPaid] = useState(false)
@@ -137,7 +137,7 @@ export default function EditorBoard({
     if (!confirm(`Mark all ${unpaidCount} unpaid project${unpaidCount === 1 ? "" : "s"} as paid? ($${unpaidTotal} total)`)) return
     setMarkingAllPaid(true)
     setCards((prev) => prev.map((c) =>
-      (c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid
+      (c.editorStatus === "EDITED" || c.editorStatus === "COMPLETE" || c.editorStatus === "PAID") && !c.editorPaid
         ? { ...c, editorPaid: true }
         : c,
     ))
@@ -297,7 +297,7 @@ function EditorCard({ card, userRole, isDragging, onClick, onDragStart, onDragEn
   const status = transferring ? "IN_PROGRESS" : card.transferStatus
 
   const showPaidPill = userRole === "CEO"
-    && (card.editorStatus === "COMPLETE" || card.editorStatus === "PAID")
+    && (card.editorStatus === "EDITED" || card.editorStatus === "COMPLETE" || card.editorStatus === "PAID")
 
   async function togglePaid(e: React.MouseEvent) {
     e.stopPropagation()

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const result = await prisma.creative.updateMany({
     where: {
-      editorStatus: { in: ["COMPLETE", "PAID"] },
+      editorStatus: { in: ["EDITED", "COMPLETE", "PAID"] },
       editorPaid: false,
       ...(team ? { team } : {}),
     },
